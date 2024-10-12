@@ -19,6 +19,10 @@ load_dotenv()
 if "GOOGLE_API_KEY" not in os.environ:
     raise Exception("GOOGLE_API_KEY not found in the environment")
 
+file_path = 'sample resumes/software-engineer2.pdf'
+extracted_text = extract_text(file_path)
+
+
 llm = ChatGoogleGenerativeAI(
     model="gemini-1.5-flash",
     temperature=0,
@@ -26,8 +30,6 @@ llm = ChatGoogleGenerativeAI(
     timeout=None,
     max_retries=3
 )
-file_path = 'sample resumes/mid-level-software-engineer.pdf'
-extracted_text = extract_text(file_path)
 
 
 class Company(BaseModel):
@@ -52,30 +54,7 @@ class UserResumeProfile(BaseModel):
     companies: Optional[List[Company]] = Field(None, description='List of past companies with job details.')
 
 
-# Custom parser
-def extract_json(message: AIMessage) -> UserResumeProfile:
-    """
-    Extracts JSON content from a string where JSON is embedded between json and  tags.
 
-    """
-    try:
-        text = message.content
-
-        match = re.search(r'```json\n(.*?)```', text, re.DOTALL)
-
-        if match:
-            json_str = match.group(1).strip()
-            data = json.loads(json_str)
-            UserResumeProfile(**data)
-
-            return data
-        
-    except Exception as e:
-        print(e)
-        print(traceback.format_exc())
-        return None
-    
-    return None
 
 # Prompt
 prompt = ChatPromptTemplate.from_messages(
@@ -102,6 +81,32 @@ prompt = ChatPromptTemplate.from_messages(
 prompt_output = prompt.format_prompt(extracted_text=extracted_text).to_string()
 
 output_content = llm.invoke(prompt_output)
+
+
+# Custom parser
+def extract_json(message: AIMessage) -> UserResumeProfile:
+    """
+    Extracts JSON content from a string where JSON is embedded between json and  tags.
+
+    """
+    try:
+        text = message.content
+
+        match = re.search(r'```json\n(.*?)```', text, re.DOTALL)
+
+        if match:
+            json_str = match.group(1).strip()
+            data = json.loads(json_str)
+            UserResumeProfile(**data)
+
+            return data
+        
+    except Exception as e:
+        print(e)
+        print(traceback.format_exc())
+        return None
+    
+    return None
 
 extracted_resume = extract_json(output_content)
 
